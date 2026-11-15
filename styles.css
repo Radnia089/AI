@@ -179,6 +179,14 @@ button {
   border-radius: 10px;
 }
 
+.reply {
+  margin: 0;
+  padding: 10px 12px;
+  background: #e7f2ea;
+  border-right: 3px solid var(--ok);
+  border-radius: 10px;
+}
+
 .mic {
   align-self: flex-start;
   display: flex;

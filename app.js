@@ -55,6 +55,8 @@ render();
 
 function submitText(raw) {
   const next = interpret(ui.order, raw);
+  if (next.reply) speak(next.reply);
+  else stopSpeaking();
   if (!next.ok) {
     ui.order = next;
     render();
@@ -120,6 +122,7 @@ function markSteps() {
 }
 
 function liveMessage() {
+  if (ui.order.reply) return ui.order.reply;
   if (ui.order.notice) return ui.order.notice;
   if (ui.step === "ask" && ui.ask === "size") return "اندازه را مشخص کنید.";
   if (ui.step === "ask" && ui.ask === "color") return "رنگ را مشخص کنید.";
@@ -142,7 +145,8 @@ function listenHtml() {
   return `
     <section class="screen" data-screen="listen">
       <h2>بگویید چه کاشی‌ای می‌خواهید</h2>
-      <p class="lead">اندازه و رنگ کافی است. می‌توانید همان جمله را بنویسید.</p>
+      <p class="lead">سلام بگویید، یا اندازه و رنگ کاشی را بگویید. نوشتن مثل گفتن است.</p>
+      ${replyHtml()}
       ${noticeHtml()}
       ${composer("نشان دادن کاشی‌ها")}
       <button type="button" class="example" data-action="example">نمونه: ${esc(EXAMPLE)}</button>
@@ -176,6 +180,7 @@ function askHtml() {
     <section class="screen" data-screen="ask">
       <h2>${title}</h2>
       <p class="lead">${esc(detail)}</p>
+      ${replyHtml()}
       ${noticeHtml()}
       <div class="chips">${chips}</div>
       ${composer("ادامه")}
@@ -203,6 +208,7 @@ function samplesHtml() {
     <section class="screen" data-screen="samples">
       <h2>کاشی‌های نزدیک</h2>
       <p class="lead">این‌ها به حرف شما نزدیک‌اند. یکی را انتخاب کنید.</p>
+      ${replyHtml()}
       <ul class="tags">
         <li>محصول: ${esc(ui.order.product || "کاشی")}</li>
         <li>اندازه: ${SIZE_LABEL[ui.order.size] || ""}</li>
@@ -229,6 +235,7 @@ function summaryHtml() {
         <div><dt>اندازه</dt><dd>${SIZE_LABEL[tile.size]}</dd></div>
         <div><dt>رنگ</dt><dd>${COLOR_LABEL[tile.color]}</dd></div>
       </dl>
+      ${replyHtml()}
       <p class="heard">شنیدم: «${esc(ui.order.transcript)}»</p>
       <button type="button" class="primary" data-action="reset">سفارش تازه</button>
     </section>
@@ -256,8 +263,13 @@ function composer(submitLabel) {
   `;
 }
 
+function replyHtml() {
+  if (!ui.order.reply) return "";
+  return `<p class="reply" data-reply>${esc(ui.order.reply)}</p>`;
+}
+
 function noticeHtml() {
-  if (!ui.order.notice) return "";
+  if (!ui.order.notice || ui.order.notice === ui.order.reply) return "";
   return `<p class="notice" data-notice>${esc(ui.order.notice)}</p>`;
 }
 
@@ -298,6 +310,7 @@ function toggleMic() {
     rec.stop();
     return;
   }
+  stopSpeaking();
   try {
     rec.start();
   } catch {
@@ -361,6 +374,28 @@ function updateVoiceUi(listening, message) {
   const label = mic.querySelector("span");
   if (label) label.textContent = listening ? "شنیدن…" : "گفتن";
   status.textContent = message;
+}
+
+function speak(text) {
+  const synth = window.speechSynthesis;
+  if (!synth || !text) return;
+  try {
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "fa-IR";
+    utter.rate = 1;
+    synth.speak(utter);
+  } catch {
+    return;
+  }
+}
+
+function stopSpeaking() {
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    return;
+  }
 }
 
 function voiceError(code) {
